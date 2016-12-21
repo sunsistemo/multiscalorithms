@@ -1,6 +1,7 @@
 import argparse
+import gc
 from random import normalvariate, seed
-from time import process_time
+from time import process_time, time
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -83,7 +84,11 @@ def main():
     parser.add_argument("-N", type=int, default=100)
     parser.add_argument("-m", "--method", help="integration method", type=str, default="rk4")
     parser.add_argument("-tol", "--tolerance", help="Newton's method convergence tolerance", type=float, default=1E-5)
+    parser.add_argument("--compare-explicit-implicit", help=compare_explicit_implicit.__doc__, action="store_true")
     args = parser.parse_args()
+
+    if args.compare_explicit_implicit:
+        return compare_explicit_implicit()
 
     t_end = args.time
     h = args.time_step
@@ -107,6 +112,37 @@ def main():
     elif method.__name__ == "odeint":
         x, t = integrate_scipy(h, times, N)
     return x, t
+
+def compare_explicit_implicit():
+    """Compare the CPU time needed to integrate the system with the Runge-Kutta 4
+    method vs. the Backward Euler method.
+    """
+    global N, f
+    N = 100
+    f.vect = np.empty(2 + N + N)
+    t_end = 10000
+    # First we'll do explicit
+    h = 0.01
+    num_steps = int(t_end / h)
+    times = h * np.array(range(num_steps + 1))
+    gc.disable()                # don't measure garbage-collection
+    x1, t1 = integrate_explicit(runge_kutta_4, h, num_steps, N)
+    del(x1)                     # de-allocate this massive array
+    gc.collect()
+
+    # And now implicit
+    tolerance = 1E-5
+    h2 = 0.1
+    num_steps2 = int(t_end / h)
+    times2 = h * np.array(range(num_steps + 1))
+    x2, t2 = integrate_implicit(h, num_steps, N, tolerance)
+    del(x2)
+    gc.enable()
+    print(t1, t2)
+    with open("explicit_implicit_{}.txt".format(int(time())), "w") as f:
+        f.writelines(["Method\t CPU time\n",
+                      "RK4:\t {}\n".format(t1),
+                      "BE: \t {}\n".format(t2)])
 
 def plot(times, x):
     plt.plot(times, x[:, 0], 'm')

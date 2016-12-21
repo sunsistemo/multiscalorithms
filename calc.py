@@ -3,7 +3,7 @@ from numpy import inf
 from numpy.linalg import solve, norm
 from tqdm import trange
 
-range = trange
+# range = trange
 
 def forward_euler(x, f, h, num_steps):
     for step in range(num_steps):
