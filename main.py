@@ -33,24 +33,11 @@ def f(x):
     for j, i in enumerate(range(N+2, 2*N + 2)):
         f.vect[i] = -j**2 * (x[i-N] - x[0])
     return f.vect
-f.vect = np.empty(vect_length)  # create vect once to vectorise
+f.vect = np.empty(vect_length)
 
-
-def backward():
-    h = 1
-    t_end = 10
-    num_steps = int(t_end / h)
-    times = h * np.array(range(num_steps + 1))
-    tolerance = 0.01
-
-    x = init(num_steps, N)
-    j = lambda v: jacobian(gamma, h, N)(*v)
-    x = backward_euler(x, f, j, h, num_steps, tolerance)
-
-    plt.plot(times, x[:, 0], 'b', label="Backward Euler")
-    plt.show()
-    return x
-
+def j(x):
+    pass
+j.vect = np.empty([vect_length, vect_length])
 
 def main():
     h = 0.001
@@ -72,7 +59,7 @@ def main():
     times2 = h2 * np.array(range(num_steps2 + 1))
     x2 = init(num_steps2, N, SEED)
     j = lambda v: jacobian(gamma, h2, N)(*v)
-    results["backward_euler"] = backward_euler(x2, f, j, h, num_steps2, tolerance, tqdm=True)
+    results["backward_euler"] = backward_euler(x2, f, j, h2, num_steps2, tolerance)
 
     # Filter out divergent forward Euler values
     feuler = results["forward_euler"]
