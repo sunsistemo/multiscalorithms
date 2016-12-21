@@ -14,9 +14,8 @@ from sym import generate_jacobian
 V = lambda q: 1/4 * (q**2 - 1)**2    # double-well potential
 dV = lambda q: (q**2 - 1) * q
 gamma = 1
-N = 100
-vect_length = 2 + N + N
 SEED = 42
+
 
 def init(num_steps, N, water=None):
     """Set the system's initial conditions."""
@@ -40,70 +39,82 @@ def f(x):
     for j, i in enumerate(range(N+2, 2*N + 2)):
         f.vect[i] = -j**2 * (x[i-N] - x[0])
     return f.vect
-f.vect = np.empty(vect_length)
+
+def integrate_explicit(method, h, num_steps, N):
+    x = init(num_steps, N, SEED)
+    start = process_time()
+    x = method(x, f, h, num_steps)
+    end = process_time()
+    return x, end - start
+
+def integrate_implicit(h, num_steps, N, tolerance):
+    x = init(num_steps, N, SEED)
+    j = generate_jacobian(gamma, h, N)
+    start = process_time()
+    x = backward_euler(x, f, j, h, num_steps, tolerance)
+    end = process_time()
+    return x, end - start
+
+def integrate_scipy(h, times, N):
+    x = init(1, N, SEED)[0]
+    j = generate_jacobian(gamma, h, N)
+    start = process_time()
+    x = odeint(lambda y, t: f(y), x, times, Dfun=lambda y, t: j(y))
+    end = process_time()
+    return x, end - start
+
+def suppress_diverge(x, vect_length):
+    """Replaces diverging values with zero's."""
+    diverged = False
+    for i in range(len(x)):
+        if x[i][0] > 20:
+            diverged = True
+        if diverged:
+            x[i] = np.zeros(vect_length)
+    return x
+
 
 def main():
-    parser = argparse.ArgumentParser(description="Integrate the model by Ford, Kac and Zwanzig",
+    global N
+    parser = argparse.ArgumentParser(description="Numerically Integrate the model by Ford, Kac and Zwanzig",
                                      epilog="Homepage: https://github.com/sunsistemo/multiscalorithms")
+    parser.add_argument("-T", "--time", help="integration time period", type=int, default=10)
+    parser.add_argument("-dt", "--time-step", help="integration time step", type=float, default=0.01)
+    parser.add_argument("-N", type=int, default=100)
+    parser.add_argument("-m", "--method", help="integration method", type=str, default="rk4")
+    parser.add_argument("-tol", "--tolerance", help="Newton's method convergence tolerance", type=float, default=1E-5)
     args = parser.parse_args()
-    h = 0.01
-    t_end = 10
+
+    t_end = args.time
+    h = args.time_step
     num_steps = int(t_end / h)
     times = h * np.array(range(num_steps + 1))
-    cpu_times = {}
 
-    # Explicit integrators
-    results = {}
-    for method in [forward_euler, runge_kutta_4]:
-        x = init(num_steps, N, SEED)
-        start = process_time()
-        x = method(x, f, h, num_steps)
-        end = process_time()
-        cpu_times[method.__name__] = end - start
-        results[method.__name__] = x
+    N = args.N
+    vect_length = 2 + N + N
+    f.vect = np.empty(vect_length)
 
-    # Backward Euler
-    h2 = 0.1
-    tolerance = 1E-5
-    num_steps2 = int(t_end / h2)
-    times2 = h2 * np.array(range(num_steps2 + 1))
-    x2 = init(num_steps2, N, SEED)
-    j = generate_jacobian(gamma, h2, N)
-    start = process_time()
-    x = backward_euler(x2, f, j, h2, num_steps2, tolerance)
-    end = process_time()
-    cpu_times["backward_euler"] = end - start
-    results["backward_euler"] = x
+    tolerance = args.tolerance
+    methods = {"fe": forward_euler, "rk4": runge_kutta_4, "be": backward_euler, "scipy": odeint}
+    method = methods.get(args.method)
+    if method is None:
+        raise ValueError("Available methods are: {}".format(", ".join(methods.keys())))
 
-    # Scipy Integrate
-    x3 = init(1, N, SEED)[0]
-    j3 = generate_jacobian(gamma, h2, N)
-    print("ODEINT")
-    x3 = odeint(lambda y, t: f(y), x3, times2, Dfun=lambda y, t: j3(y))
-    results["scipy_integrate"] = x3
+    if method.__name__ in ["forward_euler", "runge_kutta_4"]:
+        x, t = integrate_explicit(method, h, num_steps, N)
+    elif method.__name__ == "backward_euler":
+        x, t = integrate_implicit(h, num_steps, N, tolerance)
+    elif method.__name__ == "odeint":
+        x, t = integrate_scipy(h, times, N)
+    return x, t
 
-    # Filter out divergent forward Euler values
-    feuler = results["forward_euler"]
-    diverged = False
-    for i in range(len(feuler)):
-        if diverged:
-            feuler[i] = np.zeros(vect_length)
-        if feuler[i][0] > 20:
-            diverged = True
-
-    plt.plot(times, results["forward_euler"][:, 0], 'b', label="Feuler")
-    plt.plot(times, results["runge_kutta_4"][:, 0], 'r', label="RK4")
-
-    plt.plot(times2, results["scipy_integrate"][:, 0], 'm', label="scipy")
-    plt.plot(times2, results["backward_euler"][:, 0], 'g', label="Beuler")
-
+def plot(times, x):
+    plt.plot(times, x[:, 0], 'm')
     plt.title("Multiscalorithms")
     plt.xlabel("Time")
     plt.ylabel("q")
     plt.legend()
     plt.show()
-
-    return cpu_times
 
 if __name__ == "__main__":
     main()
