@@ -5,13 +5,13 @@ import matplotlib.pyplot as plt
 from sympy import Matrix
 
 from calc import forward_euler, runge_kutta_4, backward_euler
-from sym import jacobian
+from sym import generate_jacobian
 
 
 V = lambda q: 1/4 * (q**2 - 1)**2    # double-well potential
 dV = lambda q: (q**2 - 1) * q
 gamma = 1
-N = 10
+N = 100
 vect_length = 2 + N + N
 SEED = 42
 
@@ -35,13 +35,9 @@ def f(x):
     return f.vect
 f.vect = np.empty(vect_length)
 
-def j(x):
-    pass
-j.vect = np.empty([vect_length, vect_length])
-
 def main():
     h = 0.001
-    t_end = 1
+    t_end = 10
     num_steps = int(t_end / h)
     times = h * np.array(range(num_steps + 1))
 
@@ -58,7 +54,7 @@ def main():
     num_steps2 = int(t_end / h2)
     times2 = h2 * np.array(range(num_steps2 + 1))
     x2 = init(num_steps2, N, SEED)
-    j = lambda v: jacobian(gamma, h2, N)(*v)
+    j = generate_jacobian(gamma, h2, N)
     results["backward_euler"] = backward_euler(x2, f, j, h2, num_steps2, tolerance)
 
     # Filter out divergent forward Euler values

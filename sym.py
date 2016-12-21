@@ -1,4 +1,5 @@
-from sympy import latex, Matrix, symbols, Sum, Indexed, lambdify
+from numpy import array
+from sympy import latex, Matrix, symbols, Sum, Indexed
 
 
 def jacobian(gamma, h, N):
@@ -18,5 +19,23 @@ def jacobian(gamma, h, N):
     g = [-j**2 * (u[j-1] - q) for j in range(1, N+1)]
     f = Matrix(f + v + g)
 
-    g = y - h*f
-    return lambdify((y), g.jacobian(y))
+    g = y - h*f                 # Backward Euler equation
+    jacob = g.jacobian(y)
+    return jacob
+
+
+def generate_jacobian(gamma, h, N):
+
+    jacob = jacobian(gamma, h, N)
+    j10 = str(jacob[1, 0])
+    jacob[1, 0] = 0
+    jacob = jacob.tolist()
+    jacob = [[float(x) for x in row] for row in jacob]
+
+    def j(x):
+        q = x[0]
+        j.m[1, 0] = eval(j10)
+        return j.m
+    j.m = array(jacob)
+
+    return j
