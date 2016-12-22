@@ -138,7 +138,7 @@ def compare_explicit_implicit():
     del(x2)
     gc.enable()
     print(t1, t2)
-    with open("explicit_implicit_{}.txt".format(int(time())), "w") as f:
+    with open("explicit_implicit_N={}_{}.txt".format(N, int(time())), "w") as f:
         f.writelines(["Method\t CPU time\n",
                       "RK4:\t {}\n".format(t1),
                       "BE: \t {}\n".format(t2)])
