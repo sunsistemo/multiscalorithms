@@ -83,7 +83,7 @@ def main():
     parser.add_argument("-dt", "--time-step", help="integration time step", type=float, default=0.01)
     parser.add_argument("-N", type=int, default=100)
     parser.add_argument("-m", "--method", help="integration method", type=str, default="rk4")
-    parser.add_argument("-tol", "--tolerance", help="Newton's method convergence tolerance", type=float, default=1E-5)
+    parser.add_argument("-tol", "--tolerance", help="Newton's method convergence tolerance", type=float, default=1E-2)
     parser.add_argument("--compare-explicit-implicit", help=compare_explicit_implicit.__doc__, action="store_true")
     args = parser.parse_args()
 
@@ -130,8 +130,8 @@ def compare_explicit_implicit():
     gc.collect()
 
     # And now implicit
-    tolerance = 1E-5
     h2 = 0.1
+    tolerance = h**2            # because local truncation error is O(h^2) for Backward Euler
     num_steps2 = int(t_end / h2)
     times2 = h2 * np.array(range(num_steps2 + 1))
     x2, t2 = integrate_implicit(h2, num_steps2, N, tolerance)
