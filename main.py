@@ -74,7 +74,7 @@ def suppress_diverge(x, vect_length):
     """Replaces diverging values with zero's."""
     diverged = False
     for i in range(len(x)):
-        if x[i][0] > 20:
+        if abs(x[i][0]) > 20:
             diverged = True
         if diverged:
             x[i] = np.zeros(vect_length)
@@ -91,6 +91,7 @@ def main():
     parser.add_argument("-m", "--method", help="integration method", type=str, default="rk4")
     parser.add_argument("-tol", "--tolerance", help="Newton's method convergence tolerance", type=float, default=1E-2)
     parser.add_argument("--compare-explicit-implicit", help=compare_explicit_implicit.__doc__, action="store_true")
+    parser.add_argument("--plot-methods", help=plot_methods.__doc__, action="store_true")
     args = parser.parse_args()
 
     t_end = args.time
@@ -104,6 +105,8 @@ def main():
 
     if args.compare_explicit_implicit:
         return compare_explicit_implicit()
+    if args.plot_methods:
+        return plot_methods()
 
     tolerance = args.tolerance
     methods = {"fe": forward_euler, "rk4": runge_kutta_4, "be": backward_euler, "scipy": odeint}
@@ -112,12 +115,12 @@ def main():
         raise ValueError("Available methods are: {}".format(", ".join(methods.keys())))
 
     if method.__name__ in ["forward_euler", "runge_kutta_4"]:
-        x, t = integrate_explicit(method, h, num_steps, N)
+        x, cpu_t, t = integrate_explicit(method, h, num_steps, N)
     elif method.__name__ == "backward_euler":
-        x, t = integrate_implicit(h, num_steps, N, tolerance)
+        x, cpu_t, t = integrate_implicit(h, num_steps, N, tolerance)
     elif method.__name__ == "odeint":
-        x, t = integrate_scipy(h, times, N)
-    return x, t
+        x, cpu_t, t = integrate_scipy(h, times, N)
+    return x, cpu_t, t
 
 def compare_explicit_implicit():
     """Compare the CPU time needed to integrate the system with the Runge-Kutta 4
@@ -151,13 +154,30 @@ def compare_explicit_implicit():
                       "RK4:\t {:<25}\t\t {}\n".format(cpu_t1, t1),
                       "BE: \t {:<25}\t\t {}\n".format(cpu_t2, t2)])
 
-def plot(times, x):
-    plt.plot(times, x[:, 0], 'm')
+def plot_methods():
+    h = 0.01
+    t_end = 10
+    num_steps = int(t_end / h)
+    times = h * np.array(range(num_steps + 1))
+    x1, cpu_t1, t1 = integrate_explicit(forward_euler, h, num_steps, N)
+    x2, cpu_t2, t2 = integrate_explicit(runge_kutta_4, h, num_steps, N)
+
+    tolerance = h**2
+    x3, cpu_t3, t3 = integrate_implicit(h, num_steps, N, tolerance)
+
+    # suppress Forward Euler divergence
+    x1 = suppress_diverge(x1, 2 + N + N)
+
+    plt.figure(figsize=(9, 6))
+    plt.plot(times, x1[:, 0], 'b', label="Forward Euler")
+    plt.plot(times, x2[:, 0], 'g', label="Runge-Kutta 4")
+    plt.plot(times, x3[:, 0], 'r', label="Backward Euler")
     plt.title("Multiscalorithms")
     plt.xlabel("Time")
-    plt.ylabel("q")
+    plt.ylabel("Position (q)")
     plt.legend()
-    plt.show()
+    # plt.show()
+    plt.savefig("methods_position_comparison", dpi=400)
 
 if __name__ == "__main__":
     main()
