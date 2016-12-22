@@ -1,7 +1,7 @@
 import argparse
 import gc
 from random import normalvariate, seed
-from time import process_time, time
+from time import process_time, perf_counter, time
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -43,26 +43,32 @@ def f(x):
 
 def integrate_explicit(method, h, num_steps, N):
     x = init(num_steps, N, SEED)
-    start = process_time()
+    start = perf_counter()
+    cpu_start = process_time()
     x = method(x, f, h, num_steps)
-    end = process_time()
-    return x, end - start
+    cpu_end = process_time()
+    end = perf_counter()
+    return x, cpu_end - cpu_start, end - start
 
 def integrate_implicit(h, num_steps, N, tolerance):
     x = init(num_steps, N, SEED)
     j = generate_jacobian(gamma, h, N)
-    start = process_time()
+    start = perf_counter()
+    cpu_start = process_time()
     x = backward_euler(x, f, j, h, num_steps, tolerance)
-    end = process_time()
-    return x, end - start
+    cpu_end = process_time()
+    end = perf_counter()
+    return x, cpu_end - cpu_start, end - start
 
 def integrate_scipy(h, times, N):
     x = init(1, N, SEED)[0]
     j = generate_jacobian(gamma, h, N)
-    start = process_time()
+    start = perf_counter()
+    cpu_start = process_time()
     x = odeint(lambda y, t: f(y), x, times, Dfun=lambda y, t: j(y))
-    end = process_time()
-    return x, end - start
+    cpu_end = process_time()
+    end = perf_counter()
+    return x, cpu_end - cpu_start, end - start
 
 def suppress_diverge(x, vect_length):
     """Replaces diverging values with zero's."""
@@ -125,7 +131,7 @@ def compare_explicit_implicit():
     num_steps = int(t_end / h)
     times = h * np.array(range(num_steps + 1))
     gc.disable()                # don't measure garbage-collection
-    x1, t1 = integrate_explicit(runge_kutta_4, h, num_steps, N)
+    x1, cpu_t1, t1 = integrate_explicit(runge_kutta_4, h, num_steps, N)
     del(x1)                     # de-allocate this massive array
     gc.collect()
 
@@ -134,14 +140,16 @@ def compare_explicit_implicit():
     tolerance = h**2            # because local truncation error is O(h^2) for Backward Euler
     num_steps2 = int(t_end / h2)
     times2 = h2 * np.array(range(num_steps2 + 1))
-    x2, t2 = integrate_implicit(h2, num_steps2, N, tolerance)
+    x2, cpu_t2, t2 = integrate_implicit(h2, num_steps2, N, tolerance)
     del(x2)
     gc.enable()
-    print(t1, t2)
+    print("Methods: RK4, Backward Euler")
+    print("CPU times: ", cpu_t1, cpu_t2)
+    print("Wallclock times: ", t1, t2)
     with open("explicit_implicit_N={}_{}.txt".format(N, int(time())), "w") as f:
-        f.writelines(["Method\t CPU time\n",
-                      "RK4:\t {}\n".format(t1),
-                      "BE: \t {}\n".format(t2)])
+        f.writelines(["Method\t CPU time\t Wallclock time\n",
+                      "RK4:\t {:<25}\t\t {}\n".format(cpu_t1, t1),
+                      "BE: \t {:<25}\t\t {}\n".format(cpu_t2, t2)])
 
 def plot(times, x):
     plt.plot(times, x[:, 0], 'm')
