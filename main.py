@@ -87,9 +87,6 @@ def main():
     parser.add_argument("--compare-explicit-implicit", help=compare_explicit_implicit.__doc__, action="store_true")
     args = parser.parse_args()
 
-    if args.compare_explicit_implicit:
-        return compare_explicit_implicit()
-
     t_end = args.time
     h = args.time_step
     num_steps = int(t_end / h)
@@ -98,6 +95,9 @@ def main():
     N = args.N
     vect_length = 2 + N + N
     f.vect = np.empty(vect_length)
+
+    if args.compare_explicit_implicit:
+        return compare_explicit_implicit()
 
     tolerance = args.tolerance
     methods = {"fe": forward_euler, "rk4": runge_kutta_4, "be": backward_euler, "scipy": odeint}
@@ -116,11 +116,10 @@ def main():
 def compare_explicit_implicit():
     """Compare the CPU time needed to integrate the system with the Runge-Kutta 4
     method vs. the Backward Euler method.
+
+    All other script flags are ignored except N.
     """
-    global N, f
-    N = 100
-    f.vect = np.empty(2 + N + N)
-    t_end = 10000
+    t_end = 1000
     # First we'll do explicit
     h = 0.01
     num_steps = int(t_end / h)
@@ -133,9 +132,9 @@ def compare_explicit_implicit():
     # And now implicit
     tolerance = 1E-5
     h2 = 0.1
-    num_steps2 = int(t_end / h)
-    times2 = h * np.array(range(num_steps + 1))
-    x2, t2 = integrate_implicit(h, num_steps, N, tolerance)
+    num_steps2 = int(t_end / h2)
+    times2 = h2 * np.array(range(num_steps2 + 1))
+    x2, t2 = integrate_implicit(h2, num_steps2, N, tolerance)
     del(x2)
     gc.enable()
     print(t1, t2)
