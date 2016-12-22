@@ -33,5 +33,7 @@ def newton(v, system, jacobian, tolerance):
 def backward_euler(x, f, j, h, num_steps, tolerance):
     for step in range(num_steps):
         system = lambda v: v - h * f(v) - x[step]
-        x[step + 1] = newton(x[step], system, j, tolerance)
+        # Initial guess for Newton's method is 1 step Forward Euler
+        x0 = x[step] + h * f(x[step])
+        x[step + 1] = newton(x0, system, j, tolerance)
     return x
