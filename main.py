@@ -4,6 +4,7 @@ from random import normalvariate, seed
 from time import process_time, perf_counter, time
 
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
 from scipy.integrate import odeint
 from sympy import Matrix
@@ -92,6 +93,7 @@ def main():
     parser.add_argument("-tol", "--tolerance", help="Newton's method convergence tolerance", type=float, default=1E-2)
     parser.add_argument("--compare-explicit-implicit", help=compare_explicit_implicit.__doc__, action="store_true")
     parser.add_argument("--plot-methods", help=plot_methods.__doc__, action="store_true")
+    parser.add_argument("--plot-potential", help=plot_potential.__doc__, action="store_true")
     args = parser.parse_args()
 
     t_end = args.time
@@ -107,6 +109,8 @@ def main():
         return compare_explicit_implicit()
     if args.plot_methods:
         return plot_methods()
+    if args.plot_potential:
+        return plot_potential()
 
     tolerance = args.tolerance
     methods = {"fe": forward_euler, "rk4": runge_kutta_4, "be": backward_euler, "scipy": odeint}
@@ -177,7 +181,22 @@ def plot_methods():
     plt.ylabel("Position (q)")
     plt.legend()
     # plt.show()
-    plt.savefig("methods_position_comparison", dpi=400)
+    print("Methods: Forward Euler, RK4, Backward Euler")
+    print("CPU times: ", cpu_t1, cpu_t2, cpu_t3)
+    print("Wallclock times: ", t1, t2, t3)
+    plt.show()
+    # plt.savefig("methods_position_comparison", dpi=400)
+
+def plot_potential():
+    matplotlib.rc("text", usetex=True)
+    l = 7
+    x = np.arange(-l, l, 0.01)
+    y = [V(i) for i in x]
+    plt.plot(x, y)
+    plt.title(r"The potential $V(q) = \frac{1}{4} (q^2 - 1)^2$")
+    plt.xlabel("$q$")
+    plt.ylabel("$V$")
+    plt.savefig("potential", dpi=400)
 
 if __name__ == "__main__":
     main()
